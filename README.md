@@ -28,7 +28,7 @@ Compile the code in src
 cargo build --release
 ```
 
-The binary should be stored in: \ 
+The binary should be stored in:  
 [thisfolder]/target/release/rust-hyprland-json
 
 ### Using Nix (my preferd way)
