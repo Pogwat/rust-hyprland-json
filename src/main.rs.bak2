@@ -1,0 +1,97 @@
+use std::os::unix::net::UnixStream;
+use std::env;
+use std::io::prelude::*;
+use std::path::Path;
+use std::io::BufReader;
+use std::collections::HashMap;
+use std::process::Command;
+
+use serde_json::Value;
+
+fn main() {
+ readsock2(Path::new(&env::var_os("XDG_RUNTIME_DIR").unwrap())
+ .join("hypr")
+ .join(env::var_os("HYPRLAND_INSTANCE_SIGNATURE").unwrap())
+ .join(".socket2.sock")).ok();
+}
+
+fn hyprctl(args: &[&str]) -> Result<Value, Box<dyn std::error::Error>> {
+    let output = Command::new("hyprctl")
+        .args(args)
+        .output()
+        .expect("Failed to execute hyprctl");
+    Ok(serde_json::from_slice(&output.stdout)?)
+}
+
+struct All {
+    active_win: String,
+    active_work: u8,
+    workspaces: HashMap<u8, String>
+}
+
+
+impl All {
+    fn describe(&self) {
+       let mut entries: Vec<_> = self.workspaces.iter().collect();
+entries.sort_by_key(|&(id, _)| id);
+let output = entries.into_iter()
+    .map(|(id, name)| format!("{{\"id\":\"{}\",\"name\":\"{}\"}}", id, name))
+    .collect::<Vec<_>>()
+    .join(", ");   
+    
+  println!("{{\"active_window\":\"{}\",\"current_workspace\":\"{}\",\"workspaces\":[{}]}}"
+  , self.active_win
+  , self.active_work 
+  ,output
+);  
+    
+}
+}
+
+fn readsock2 <P: AsRef<Path>>(socket_path: P) -> Result<(), Box<dyn std::error::Error>> {
+    
+    let stream = UnixStream::connect(socket_path)?;
+    let reader = BufReader::new(&stream);
+  
+let workspace: u8 = hyprctl(&["activeworkspace", "-j"])?.get("id")
+    .and_then(|v| v.as_u64())
+    .map(|v| v as u8)
+    .unwrap();
+
+let mut my_struct = All  { active_win: "No Window".to_string(), active_work: workspace, workspaces: HashMap::new()};
+
+let workspaces:Vec<Value> = serde_json::from_value(hyprctl(&["workspaces", "-j"])?)?;
+
+for ws in &workspaces {
+    if let Some(id) = ws.get("id").and_then(|v| v.as_u64()).map(|v| v as u8) {
+       if let Some(name) = ws.get("name").and_then(|v| v.as_str()) {
+        my_struct.workspaces.insert(id, name.to_string() ); }
+}
+}
+
+   for line_result in reader.lines() {
+    let line = line_result?;
+   if let Some(stripped) = line.strip_prefix("activewindow>>") {
+    my_struct.active_win = stripped.to_string();
+    my_struct.describe(); }
+    
+    else if let Some(stripped) = line.strip_prefix("workspace>>") {
+    my_struct.active_work = stripped.parse::<u8>()?;
+    my_struct.describe();
+    }
+
+    else if let Some(stripped) = line.strip_prefix("createworkspacev2>>") {
+    let (name, id) = stripped.split_once(',').expect("missing comma");
+    my_struct.workspaces.insert(id.parse::<u8>()?,name.to_string());
+    my_struct.describe();
+    }
+ 
+    else if let Some(stripped) = line.strip_prefix("destroyworkspace>>") {
+    my_struct.workspaces.remove(&stripped.parse::<u8>()?);
+    my_struct.describe();
+    }
+    
+}
+Ok(())
+}
+   
