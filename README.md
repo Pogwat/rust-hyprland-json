@@ -30,7 +30,7 @@ This for for Nixos specifically but can be adapted for nix:
 
 Save this to a file.nix 
 replace file.nix with a name
-``
+```
 { rustPlatform, lib, fetchFromGitHub }:
 rustPlatform.buildRustPackage rec {
   pname = "rust-hyprland-json";
@@ -56,7 +56,7 @@ rustPlatform.buildRustPackage rec {
 }
 
 
-``
+```
 
 Add this to configuration.nix
 Repalce /path/to/file.nix.nix with the actual path of the above file
