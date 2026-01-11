@@ -13,16 +13,22 @@ Just download the pre-compiled binary under releases
 ### Cargo Compilation
 To compile with Cargo you need git (or some tool to fetch files from this repo) and cargo installed
 
-Clone the repo \
+Clone the repo 
+```bash
 git clone https://github.com/Pogwat/rust-hyprland-json
+```
 
-Move into cloned repo folder \
+Move into cloned repo folder 
+```bash
 cd rust-hyprland-json
+```
 
-Compile the code in src \
+Compile the code in src 
+```bash
 cargo build --release
+```
 
-The binary should be stored in \
+The binary should be stored in: \ 
 [thisfolder]/target/release/rust-hyprland-json
 
 ### Using Nix (my preferd way)
