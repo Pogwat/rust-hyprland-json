@@ -30,7 +30,7 @@ This for for Nixos specifically but can be adapted for nix:
 
 Save this to a file.nix 
 replace file.nix with a name
-```
+```nix
 { rustPlatform, lib, fetchFromGitHub }:
 rustPlatform.buildRustPackage rec {
   pname = "rust-hyprland-json";
