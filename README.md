@@ -13,16 +13,17 @@ Just download the pre-compiled binary under releases
 ### Cargo Compilation
 To compile with Cargo you need git (or some tool to fetch files from this repo) and cargo installed
 
-Clone the repo
+Clone the repo \
 git clone https://github.com/Pogwat/rust-hyprland-json
 
-Move into cloned repo folder
+Move into cloned repo folder \
 cd rust-hyprland-json
 
-Compile the code in src
+Compile the code in src \
 cargo build --release
 
-The binary should be stored in [thisfolder]/target/release/rust-hyprland-json
+The binary should be stored in \
+[thisfolder]/target/release/rust-hyprland-json
 
 ### Using Nix (my preferd way)
 You obviously need to have nix installed
@@ -60,7 +61,7 @@ rustPlatform.buildRustPackage rec {
 
 Add this to configuration.nix
 Repalce /path/to/file.nix.nix with the actual path of the above file
-``
+```nix
 
 nixpkgs.overlays = [
 
@@ -73,7 +74,7 @@ nixpkgs.overlays = [
 ];
 
 environment.systemPackages = [rust-hyprland-json];
-``
+```
 
 
 
@@ -83,7 +84,7 @@ Currnetly NO command line arguments. run rust-hyprland-json and pass it to a jso
 ### Eww
 My personal eww config uses it for the status bar
 Heres a snippet:
-``
+```yuck
 (deflisten all
 'rust-hyprland-json')
 
@@ -123,4 +124,4 @@ Heres a snippet:
     (workspaces)
     (window)
     (sidestuff)))
-``
+```
