@@ -1,10 +1,56 @@
-use clap::{Command, Arg, ArgAction};
 use std::os::unix::net::UnixStream;
 use std::env::var;
 use std::io::{BufRead, BufReader};
 use std::collections::HashMap; //for windows
 use std::collections::BTreeMap; //Sort by id on insert
 
+mod text;
+use text::HELP;
+
+struct AppArgs {
+    all: bool,
+    socket: Option<String>
+}
+
+fn main() {
+ 
+let args = parse_args().expect("failed to parse args");
+
+let sock:String = args.socket.clone().unwrap_or_else(|| 
+        format!(
+        "{}/hypr/{}/.socket2.sock",
+        var("XDG_RUNTIME_DIR").unwrap(),
+        var("HYPRLAND_INSTANCE_SIGNATURE").unwrap()
+    )
+)
+;
+let _ = readsock(&sock, args);
+
+
+}
+
+fn parse_args() -> Result<AppArgs, pico_args::Error> {
+    let mut pargs = pico_args::Arguments::from_env();
+
+    // Help has a higher priority and should be handled separately.
+    if pargs.contains(["-h", "--help"]) {
+        print!("{}", HELP);
+        std::process::exit(0);
+    }
+
+    let args = AppArgs { //value struct to be returned
+        socket: pargs.opt_value_from_str([ "-p", "--path"])?,
+        all: pargs.contains(["-a", "--all"]),
+    };
+
+    // It's up to the caller what to do with the remaining arguments.
+    let remaining = pargs.finish();
+    if !remaining.is_empty() {
+        eprintln!("Warning: unused arguments left: {:?}.", remaining);
+    }
+
+    Ok(args)
+}
 
 
 fn hyprctl<T>(args: &[&str]) ->  Result<T, serde_json::Error> //Result is of a inputed type
@@ -19,41 +65,6 @@ where
 }
 
 
-fn args() -> Result<clap::ArgMatches, clap::Error>  {
-   let matches: clap::ArgMatches = Command::new("myprog")
-        .args([
-    
-            Arg::new("socket")
-            .action(ArgAction::Set)
-            .value_name("socket")
-            .index(1)
-            .help("Hyprland UNIX socket path"),
-    
-            Arg::new("workspaces")
-            .action(ArgAction::SetTrue)
-            .long("workspaces")
-            .short('w')
-            .help("Monitor workspaces?"),
-        
-            Arg::new("current-workspace")
-            .action(ArgAction::SetTrue)
-            .long("current-workspace")
-            .short('c'),
-            
-            Arg::new("title")
-            .action(ArgAction::SetTrue)
-            .long("title")
-            .short('t'),
-
-            Arg::new("enable-all")
-            .action(ArgAction::SetTrue)
-            .long("all"),
-
-    ])
-        .try_get_matches()?; //Result<ArgMatches, clap::Error>
-Ok(matches)
-
-}
 
 fn properties () -> Result<(u8, String,Vec<Workspace_D>,Vec<Client>), serde_json::Error> {
 
@@ -76,7 +87,7 @@ fn properties () -> Result<(u8, String,Vec<Workspace_D>,Vec<Client>), serde_json
 
 
 
-fn readsock(sock:&str, matches:clap::ArgMatches) -> Result<(),std::io::Error> {
+fn readsock(sock:&str, args:AppArgs) -> Result<(),std::io::Error> {
 
     //If both k and v could be hashed I wouldnt have to do this jank
            
@@ -127,12 +138,12 @@ fn readsock(sock:&str, matches:clap::ArgMatches) -> Result<(),std::io::Error> {
      let line = line?; // Result<String, std::io::Error>
      
      if let Some((prefix, value)) = line.split_once(">>") {
-        match prefix {
+         match prefix {
             //IPC Updates activewindow before workspace change message sent
             //activewindow>>kitty,~ //the window at workspace 3
             //workspace>>3 //changing to workspace 3
 
-        "activewindow" if matches.get_flag("title")||matches.get_flag("enable-all") => {
+        "activewindow" => {
             data.active_win = value.to_string();
         }
 
@@ -141,7 +152,7 @@ fn readsock(sock:&str, matches:clap::ArgMatches) -> Result<(),std::io::Error> {
             data.format();
         }
 
-        "workspacev2"  if matches.get_flag("current-workspace")||matches.get_flag("enable-all")  => {
+        "workspacev2" => {
             
             let (name1, id) = value.split_once(',').expect("missing comma");
             let (name1, id):(String,u8) = (name1.to_string(),id.parse().expect("workspace id is not u8"));
@@ -155,7 +166,7 @@ fn readsock(sock:&str, matches:clap::ArgMatches) -> Result<(),std::io::Error> {
             data.format();     
 
           }
-        "createworkspacev2" if matches.get_flag("workspaces")||matches.get_flag("enable-all")  => { 
+        "createworkspacev2"  => { 
             
             let (name1, id) = value.split_once(',').expect("missing comma");
             let id:u8 = id.parse().expect("createworkspacev2 id is not a u8 number");
@@ -171,7 +182,7 @@ fn readsock(sock:&str, matches:clap::ArgMatches) -> Result<(),std::io::Error> {
 
             data.format();
          }
-        "destroyworkspacev2"   if matches.get_flag("workspaces")||matches.get_flag("enable-all") => {            
+        "destroyworkspacev2" => {            
             
             let (name1, id) = value.split_once(',').expect("missing comma");
             let id:u8 = id.parse().expect("destroyworkspacev2 id is not a u8 number");
@@ -331,19 +342,4 @@ self.active_work
 }
 }
 
-fn main() -> Result<(), clap::Error> {
- 
-let arg = args()?;
 
-let sock:String = arg
-    .get_one::<String>("socket")
-    .cloned()
-    .unwrap_or_else(|| format!(
-        "{}/hypr/{}/.socket2.sock",
-        var("XDG_RUNTIME_DIR").unwrap(),
-        var("HYPRLAND_INSTANCE_SIGNATURE").unwrap()
-    ));
-let _ = readsock(&sock, arg) ;
-
-  Ok(()) 
-}
