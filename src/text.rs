@@ -6,6 +6,7 @@ USAGE:
 
 FLAGS:
   -h, --help            Prints help information
+  -v, --version
 
 OPTIONS:
   -a, --all
@@ -13,3 +14,5 @@ OPTIONS:
 ARGS:
   -p, --path            [path to hyprland IPC socket]
 ";
+
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");   
