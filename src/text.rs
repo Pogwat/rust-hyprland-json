@@ -6,7 +6,7 @@ USAGE:
 
 FLAGS:
   -h, --help            Prints help information
-  -v, --version
+  -v, --version         Prints version
 
 OPTIONS:
   -a, --all
