@@ -93,7 +93,7 @@ fn readsock(sock:&str, args:AppArgs) -> Result<(),std::io::Error> {
             Workspace {
                 name: workspace_d.name,
                 lastwindowtitle: Some(workspace_d.lastwindowtitle),
-                lastwindowid: None,
+                lastwindowid: Some(workspace_d.lastwindow[..2].to_string()),
                 windows_map: None,
             }
             )
@@ -106,7 +106,6 @@ fn readsock(sock:&str, args:AppArgs) -> Result<(),std::io::Error> {
             let address:String = client_d.address[2..].to_string();
             //insert into works1
             if let Some(entry_struct) = works1.get_mut(&client_d.workspace.id) {
-                entry_struct.lastwindowid = Some(client_d.address.clone().chars().skip(2).collect());
                 entry_struct.windows_map
                 .get_or_insert_with(HashMap::new)
                 .insert(address.clone(), (client_d.title,client_d.class));
