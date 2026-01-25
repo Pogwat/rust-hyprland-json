@@ -93,7 +93,7 @@ fn readsock(sock:&str, args:AppArgs) -> Result<(),std::io::Error> {
             Workspace {
                 name: workspace_d.name,
                 lastwindowtitle: Some(workspace_d.lastwindowtitle),
-                lastwindowid: Some(workspace_d.lastwindow[..2].to_string()),
+                lastwindowid: Some(workspace_d.lastwindow[2..].to_string()),
                 windows_map: None,
             }
             )
