@@ -55,36 +55,43 @@ where
     let output = std::process::Command::new("hyprctl") 
         .args(args)
         .output().expect("failed to get hyprctl output"); //Result<Output, std::io::Error>
-    Ok(serde_json::from_slice(&output.stdout)? ) // Result<T, serde_json::Error>
+    serde_json::from_slice(&output.stdout) // Result<T, serde_json::Error>
 }
 
-fn properties() -> Result<(u8, String, String, Vec<Workspace_D>,Vec<Client>), serde_json::Error> {
+struct Properties {
+    workspace: u8,
+    win: String,
+    winid: String,
+    workspaces: Vec<WorkspaceD>,
+    clients: Vec<Client>,
+}
 
-    let (workspace, win, winid): (u8, String, String) = {
+fn properties() -> Result<Properties, serde_json::Error> {
     //Deserialize "hyprctl activeworkspace -j" into Workspace struct
-    let activework_out = hyprctl::<Workspace_D>(&["activeworkspace", "-j"])?; 
-    //get id and lastwindowtitle for tupple of workspace and win
-    (activework_out.id, activework_out.lastwindowtitle, activework_out.lastwindow[2..].to_string())
+    let activework_out = hyprctl::<WorkspaceD>(&["activeworkspace", "-j"])?; 
+
+    let props = Properties {
+        workspace: activework_out.id, 
+        win: activework_out.lastwindowtitle,
+        winid: activework_out.lastwindow[2..].to_string(),
+        workspaces: serde_json::from_value(hyprctl(&["workspaces", "-j"])?)?,
+        clients: serde_json::from_value(hyprctl(&["clients", "-j"])?)?,
+
     };
-    let workspaces:Vec<Workspace_D> = serde_json::from_value(hyprctl(&["workspaces", "-j"])?)?;
-    let clients:Vec<Client>  = serde_json::from_value(hyprctl(&["clients", "-j"])?)?;
-
-    Ok((workspace,win,winid,workspaces,clients))
-
-
+    Ok(props)
 }
 
 fn readsock(sock:&str, args:AppArgs) -> Result<(),std::io::Error> {
 
-    //If both k and v could be hashed I wouldnt have to do this jank
-           
+    //If both k and v could be hashed I wouldnt have to do this jank          
     let mut by_id: HashMap<Rc<str>, u8> = HashMap::new();
    
     let stream = UnixStream::connect(sock)?; // Result<UnixStream, std::io::Error>
     let reader = BufReader::new(stream);
 
-    let (work,win,winid,works,clients) = properties().expect("Hyprctl command failed to return results");
-    let mut works1: BTreeMap<u8, Workspace> = works.into_iter()
+    let props:Properties = properties().expect("Hyprctl command failed to return results");
+
+    let mut works1: BTreeMap<u8, Workspace> = props.workspaces.into_iter()
        .map(|workspace_d| (
             workspace_d.id,
             Workspace {
@@ -97,7 +104,7 @@ fn readsock(sock:&str, args:AppArgs) -> Result<(),std::io::Error> {
         )
     .collect();
 
-    clients.into_iter()
+    props.clients.into_iter()
         .for_each(|client_d| {
             //The address from clients is 0xsomestring but IPC sends string without the 0x, So I just get rid of the 0x here
             let address:&str = &client_d.address[2..];
@@ -114,7 +121,13 @@ fn readsock(sock:&str, args:AppArgs) -> Result<(),std::io::Error> {
             by_id.insert(share, client_d.workspace.id);   
         });
 
-    let mut data = Data { active_win: win, active_win_id: winid, active_work: work, workspaces: works1};
+    let mut data = Data { 
+        active_win: props.win,
+        active_win_id: props.winid,
+        active_work: props.workspace,
+        workspaces: works1
+        };
+
     data.format();
 
 
@@ -145,8 +158,7 @@ fn readsock(sock:&str, args:AppArgs) -> Result<(),std::io::Error> {
                         entry_struct.name = name1;
                         entry_struct.lastwindowtitle = Some(data.active_win.clone());
                     }
-
-                    data.format();     
+                    data.format();   
                 }
 
                 "createworkspacev2"  => { 
@@ -182,7 +194,7 @@ fn readsock(sock:&str, args:AppArgs) -> Result<(),std::io::Error> {
                     let workspace: u8 = workspace.parse().expect("workspace in openwindow is not u8");
                     
                     let (id,initialclass, initialtitle): (String,String,String) = (id.to_string(),initialclass.to_string(),initialtitle.to_string());
-                    let shared_id = Rc::from(id);
+                    let shared_id: Rc<str> = Rc::from(id);
                     by_id.insert(Rc::clone(&shared_id),workspace);
                     
                     if let Some(entry) = data.workspaces.get_mut(&workspace) {
@@ -197,11 +209,11 @@ fn readsock(sock:&str, args:AppArgs) -> Result<(),std::io::Error> {
                     let id:Rc<str> = Rc::from(value);
                     let work = by_id.get(&id).expect("closewindow: workspace id in by_key map is not a u8");
 
-                    if let Some(entry) = data.workspaces.get_mut(&work) {
-                        if let Some(map) = entry.windows_map.as_mut() {
+                    if let Some(entry) = data.workspaces.get_mut(work) 
+                        && let Some(map) = entry.windows_map.as_mut() {
                                 map.remove(&id).expect("this map doesn't have this id");
                         }
-                    };
+                    ;
                     data.format();    
                     }
                     
@@ -217,14 +229,14 @@ fn readsock(sock:&str, args:AppArgs) -> Result<(),std::io::Error> {
                     //window title triggers before openwindow so workspace cant be gotten from the map
                     if let Some(workspace) = by_id.get(id){ //.expect("window isint in workspace map yet");
                         let title:String = title.to_string();
-                        if let Some(entry) = data.workspaces.get_mut(workspace) {
-                            if let Some(map) = entry.windows_map.as_mut() {
-                                if let Some((initialtitle,initialclass)) = map.get_mut(id) {
+                        if let Some(entry) = data.workspaces.get_mut(workspace) 
+                            && let Some(map) = entry.windows_map.as_mut() 
+                                && let Some((initialtitle,initialclass)) = map.get_mut(id) {
                                 *initialtitle = title
                                 }
-                            }
+                            
                     
-                        }
+                        
                     }                
                     data.format();
                 }
@@ -232,12 +244,11 @@ fn readsock(sock:&str, args:AppArgs) -> Result<(),std::io::Error> {
                 "movewindowv2"=> { //movewindowv2>>55c018d12180,4,4
                     let parts: Vec<&str> = value.split(',').collect();
                     let [id,workspace,workspace_name]: [&str; 3] = parts.try_into().expect("Wrong number of elements");
-                    let (id,workspace_name):(String,String) = (id.to_string(), workspace_name.to_string());
                     let workspace:u8 = workspace.parse().expect("movewindowv2 workspace is invalid");
                     let shared = Rc::from(id);
-                    if let Some(old_workspace) = by_id.insert(Rc::clone(&shared), workspace) {
-                        if let Some(entry) = data.workspaces.get_mut(&old_workspace) {                        
-                            if let Some(map) = entry.windows_map.as_mut() {
+                    if let Some(old_workspace) = by_id.insert(Rc::clone(&shared), workspace) 
+                        && let Some(entry) = data.workspaces.get_mut(&old_workspace)                         
+                            && let Some(map) = entry.windows_map.as_mut() {
                                 let (initialtitle,initialclass) = map.remove(&shared).expect("failed to remove old map during movewindowv2");
                                 if let Some(workspace_entry) = data.workspaces.get_mut(&workspace) {
                                     workspace_entry.windows_map
@@ -245,8 +256,8 @@ fn readsock(sock:&str, args:AppArgs) -> Result<(),std::io::Error> {
                                     .insert(Rc::clone(&shared),(initialtitle,initialclass));
                                 }
                             }
-                        }
-                    }
+                        
+                    
                     data.format();
                 }
 
@@ -270,7 +281,6 @@ struct Data {
     active_win_id: String,
     active_work: u8,
     workspaces: BTreeMap<u8, Workspace >
-    //, Option< HashMap<String,(String,String)> >
 }
 
 struct Workspace { 
@@ -281,7 +291,7 @@ struct Workspace {
 }
 
 #[derive(serde::Deserialize)]
-struct Workspace_D { 
+struct WorkspaceD { 
     id: u8, //1 bytes // 7 bytes of padding to algin to 8 bytes
     name: String, // 3x 8 bytes
     lastwindowtitle: String, //unessecary field for workspaces vector
@@ -289,7 +299,7 @@ struct Workspace_D {
 }
 
 #[derive(serde::Deserialize)]
-struct Client_Work {
+struct ClientWork {
     id: u8,
     name: String,
 }
@@ -297,7 +307,7 @@ struct Client_Work {
 #[derive(serde::Deserialize)]
 struct Client {
     address: String,
-    workspace: Client_Work,
+    workspace: ClientWork,
     class: String,
     title: String,
 }
@@ -314,14 +324,12 @@ fn format (&self) {
     }) )
         .collect::<Vec<_>>();
     
-     
-
-println!("\"workspaces\":{},\"active_window\":\"{}\",\"active_window_id\":\"{}\",\"active_workspace\":\"{}\"", 
-serde_json::to_string(&workspaces).unwrap(),
-self.active_win,
-self.active_win_id,
-self.active_work
-);
+    println!("\"workspaces\":{},\"active_window\":\"{}\",\"active_window_id\":\"{}\",\"active_workspace\":\"{}\"", 
+        serde_json::to_string(&workspaces).unwrap(),
+        self.active_win,
+    self.active_win_id,
+    self.active_work
+    );
 
 }
 }
