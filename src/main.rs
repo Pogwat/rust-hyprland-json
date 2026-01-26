@@ -174,6 +174,11 @@ fn readsock(args:AppArgs) -> Result<(),std::io::Error> {
 
                 "activewindowv2" => { //activewindowv2>>55c018d12180
                     data.active_win_id = value.to_string();
+                    if let Some(workspace) = by_id.get(value)
+                    && let Some(entry) = data.workspaces.get_mut(workspace) {
+                        entry.lastwindowid = Some(data.active_win_id.clone());
+                        entry.lastwindowtitle = Some(data.active_win.clone());
+                    }
                     data.format();
                 }
 
