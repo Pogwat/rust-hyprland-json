@@ -322,8 +322,8 @@ fn format (&self) {
     println!("\"workspaces\":{},\"active_window\":\"{}\",\"active_window_id\":\"{}\",\"active_workspace\":\"{}\"", 
         serde_json::to_string(&workspaces).unwrap(),
         self.active_win,
-    self.active_win_id,
-    self.active_work
+        self.active_win_id,
+        self.active_work
     );
 
 }

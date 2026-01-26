@@ -1,5 +1,5 @@
 pub const HELP: &str = "\
-App
+rust-hyprland-json
 
 USAGE:
   app [OPTIONS] 
