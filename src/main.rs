@@ -234,12 +234,12 @@ fn readsock(args:AppArgs) -> Result<(),std::io::Error> {
                 }
 
                 "closewindow" => { // closewindow>>55c018ac1aa0    
-                    let id:Rc<str> = Rc::from(value);
-                    let work = by_id.get(&id).expect("closewindow: workspace id in by_key map is not a u8");
+                    let id:&str = value.as_ref();
+                    let work = by_id.get(id).expect("closewindow: workspace id in by_key map is not a u8");
 
                     if let Some(entry) = data.workspaces.get_mut(work) 
                         && let Some(map) = entry.windows_map.as_mut() {
-                                map.remove(&id).expect("this map doesn't have this id");
+                                map.remove(id).expect("this map doesn't have this id");
                         }
                     ;
                     data.format();    
