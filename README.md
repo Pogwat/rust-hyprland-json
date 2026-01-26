@@ -1,5 +1,3 @@
-# TESTING BRANCH
-
 # rust-hyprland-json
 A hyprland event json serializer, currently no multi-monitor support. 
 Most serilization is done manual with println! fromating, and a little deserilization with serde. It is designed to be used with a json parsers like jaq or jq and jaq in eww. 
