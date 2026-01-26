@@ -185,6 +185,8 @@ fn readsock(args:AppArgs) -> Result<(),std::io::Error> {
                     if let Some(entry_struct) = data.workspaces.get_mut(&id) { 
                         entry_struct.name = name1;
                         entry_struct.lastwindowtitle = Some(data.active_win.clone());
+                        entry_struct.lastwindowid = Some(data.active_win_id.clone());
+
                     }
                     data.format();   
                 }
@@ -270,18 +272,18 @@ fn readsock(args:AppArgs) -> Result<(),std::io::Error> {
                 }
                 
                 "movewindowv2"=> { //movewindowv2>>55c018d12180,4,4
-                    let parts: Vec<&str> = value.split(',').collect();
+                    let parts: Vec<&str> = value.split(',').collect(); //split 3 times creating 3 &str
                     let [id,workspace,workspace_name]: [&str; 3] = parts.try_into().expect("Wrong number of elements");
                     let workspace:u8 = workspace.parse().expect("movewindowv2 workspace is invalid");
-                    let shared = Rc::from(id);
-                    if let Some(old_workspace) = by_id.insert(Rc::clone(&shared), workspace) 
-                        && let Some(entry) = data.workspaces.get_mut(&old_workspace)                         
-                            && let Some(map) = entry.windows_map.as_mut() {
-                                let (initialtitle,initialclass) = map.remove(&shared).expect("failed to remove old map during movewindowv2");
-                                if let Some(workspace_entry) = data.workspaces.get_mut(&workspace) {
+                    let shared_id = Rc::from(id);
+                    if let Some(old_workspace) = by_id.insert(Rc::clone(&shared_id), workspace) //insert into by_id
+                        && let Some(entry) = data.workspaces.get_mut(&old_workspace) //mut refrence to old workspace btreemap entry                          
+                            && let Some(map) = entry.windows_map.as_mut() { //mutatable refrence to windows_map inside option
+                                let (initialtitle,initialclass) = map.remove(&shared_id).expect("failed to remove from old map during movewindowv2"); //remove and get og value's from inner hashmap
+                                if let Some(workspace_entry) = data.workspaces.get_mut(&workspace) { //mut ref to new workspace
                                     workspace_entry.windows_map
-                                    .get_or_insert_with(HashMap::new)
-                                    .insert(Rc::clone(&shared),(initialtitle,initialclass));
+                                    .get_or_insert_with(HashMap::new) //create hashmap if not in this workspace
+                                    .insert(Rc::clone(&shared_id),(initialtitle,initialclass)); //move og values into hashmap
                                 }
                             }
                         
