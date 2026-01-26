@@ -187,12 +187,6 @@ fn readsock(args:AppArgs) -> Result<(),std::io::Error> {
                     let (name1, id):(String,u8) = (name1.to_string(),id.parse().expect("workspace id is not u8"));
                     data.active_work = id;
                     
-                    if let Some(entry_struct) = data.workspaces.get_mut(&id) { 
-                        entry_struct.name = name1;
-                        entry_struct.lastwindowtitle = Some(data.active_win.clone());
-                        entry_struct.lastwindowid = Some(data.active_win_id.clone());
-
-                    }
                     data.format();   
                 }
 
