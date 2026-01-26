@@ -13,16 +13,22 @@ fn main() {
  
     let args = parse_args().expect("failed to parse args");
 
-    let sock:String = args.socket.clone().unwrap_or_else(|| 
-        format!(
-            "{}/hypr/{}/.socket2.sock",
-            var("XDG_RUNTIME_DIR").unwrap(),
-            var("HYPRLAND_INSTANCE_SIGNATURE").unwrap()
-        )
-    );
+    let args = AppArgs {
+    socket: args.socket.or_else(|| Some(format!(
+        "{}/hypr/{}/.socket2.sock",
+        var("XDG_RUNTIME_DIR").unwrap(),
+        var("HYPRLAND_INSTANCE_SIGNATURE").unwrap()
+    ))),
+    all: args.all
+    };
 
-    let _ = readsock(&sock, args);
+    let _ = readsock(args);
 
+}
+
+struct AppArgs {
+    all: bool,
+    socket: Option<String>
 }
 
 fn parse_args() -> Result<AppArgs, pico_args::Error> {
@@ -58,6 +64,28 @@ where
     serde_json::from_slice(&output.stdout) // Result<T, serde_json::Error>
 }
 
+#[derive(serde::Deserialize)]
+struct WorkspaceD { 
+    id: u8, //1 bytes // 7 bytes of padding to algin to 8 bytes
+    name: String, // 3x 8 bytes
+    lastwindowtitle: String, //unessecary field for workspaces vector
+    lastwindow: String
+}
+
+#[derive(serde::Deserialize)]
+struct ClientWork {
+    id: u8,
+    name: String,
+}
+
+#[derive(serde::Deserialize)]
+struct Client {
+    address: String,
+    workspace: ClientWork,
+    class: String,
+    title: String,
+}
+
 struct Properties {
     workspace: u8,
     win: String,
@@ -81,12 +109,12 @@ fn properties() -> Result<Properties, serde_json::Error> {
     Ok(props)
 }
 
-fn readsock(sock:&str, args:AppArgs) -> Result<(),std::io::Error> {
+fn readsock(args:AppArgs) -> Result<(),std::io::Error> {
 
     //If both k and v could be hashed I wouldnt have to do this jank          
     let mut by_id: HashMap<Rc<str>, u8> = HashMap::new();
    
-    let stream = UnixStream::connect(sock)?; // Result<UnixStream, std::io::Error>
+    let stream = UnixStream::connect(args.socket.unwrap())?; // Result<UnixStream, std::io::Error>
     let reader = BufReader::new(stream);
 
     let props:Properties = properties().expect("Hyprctl command failed to return results");
@@ -271,11 +299,6 @@ fn readsock(sock:&str, args:AppArgs) -> Result<(),std::io::Error> {
     Ok(())
 }
 
-struct AppArgs {
-    all: bool,
-    socket: Option<String>
-}
-
 struct Data {
     active_win: String,
     active_win_id: String,
@@ -290,27 +313,7 @@ struct Workspace {
     windows_map: Option< HashMap::<Rc<str>,(String,String)> >
 }
 
-#[derive(serde::Deserialize)]
-struct WorkspaceD { 
-    id: u8, //1 bytes // 7 bytes of padding to algin to 8 bytes
-    name: String, // 3x 8 bytes
-    lastwindowtitle: String, //unessecary field for workspaces vector
-    lastwindow: String
-}
 
-#[derive(serde::Deserialize)]
-struct ClientWork {
-    id: u8,
-    name: String,
-}
-
-#[derive(serde::Deserialize)]
-struct Client {
-    address: String,
-    workspace: ClientWork,
-    class: String,
-    title: String,
-}
 
 impl Data {
 fn format (&self) {
