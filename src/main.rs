@@ -158,7 +158,6 @@ fn readsock(args:AppArgs) -> Result<(),std::io::Error> {
 
     data.format();
 
-
     for line in reader.lines() {
         let line = line?; // Result<String, std::io::Error>
      
@@ -185,13 +184,11 @@ fn readsock(args:AppArgs) -> Result<(),std::io::Error> {
                 "workspacev2" => {            
                     let (name1, id) = value.split_once(',').expect("missing comma");
                     let (name1, id):(String,u8) = (name1.to_string(),id.parse().expect("workspace id is not u8"));
-                    data.active_work = id;
-                    
+                    data.active_work = id;                  
                     data.format();   
                 }
 
-                "createworkspacev2"  => { 
-                    
+                "createworkspacev2"  => {                     
                     let (name1, id) = value.split_once(',').expect("missing comma");
                     let id:u8 = id.parse().expect("createworkspacev2 id is not a u8 number");
                     data.workspaces.insert(id,
@@ -220,9 +217,9 @@ fn readsock(args:AppArgs) -> Result<(),std::io::Error> {
                 "openwindow" => { // openwindow>>55c018ac1aa0,3,kitty,kitty           
                     let parts: Vec<&str> = value.split(',').collect();
                     let [id, workspace, initialclass, initialtitle]: [&str; 4] = parts.try_into().expect("not 4 arguments in openwindow");            
-                    let workspace: u8 = workspace.parse().expect("workspace in openwindow is not u8");
-                    
+                    let workspace: u8 = workspace.parse().expect("workspace in openwindow is not u8");                    
                     let (id,initialclass, initialtitle): (String,String,String) = (id.to_string(),initialclass.to_string(),initialtitle.to_string());
+                    
                     let shared_id: Rc<str> = Rc::from(id);
                     by_id.insert(Rc::clone(&shared_id),workspace);
                     
@@ -235,7 +232,7 @@ fn readsock(args:AppArgs) -> Result<(),std::io::Error> {
                 }
 
                 "closewindow" => { // closewindow>>55c018ac1aa0    
-                    let id:&str = value.as_ref();
+                    let id:&str = value;
                     let work = by_id.get(id).expect("closewindow: workspace id in by_key map is not a u8");
 
                     if let Some(entry) = data.workspaces.get_mut(work) 
@@ -256,17 +253,13 @@ fn readsock(args:AppArgs) -> Result<(),std::io::Error> {
                 "windowtitlev2" => {
                     let (id,title) = value.split_once(',').expect("missing comma");
                     //window title triggers before openwindow so workspace cant be gotten from the map
-                    if let Some(workspace) = by_id.get(id){ //.expect("window isint in workspace map yet");
-                        let title:String = title.to_string();
-                        if let Some(entry) = data.workspaces.get_mut(workspace) 
+                    if let Some(workspace) = by_id.get(id) //.expect("window isint in workspace map yet");
+                        && let Some(entry) = data.workspaces.get_mut(workspace) 
                             && let Some(map) = entry.windows_map.as_mut() 
                                 && let Some((initialtitle,initialclass)) = map.get_mut(id) {
-                                *initialtitle = title
+                                *initialtitle = title.to_string()
                                 }
-                            
-                    
-                        
-                    }                
+                                                                                                      
                     data.format();
                 }
                 
@@ -313,8 +306,6 @@ struct Workspace {
     lastwindowid: Option<String>,
     windows_map: Option< HashMap::<Rc<str>,(String,String)> >
 }
-
-
 
 impl Data {
 fn format (&self) {
