@@ -2,6 +2,16 @@
 A hyprland event json serializer, currently no multi-monitor support. 
 Most serilization is done manual with println! fromating, and a little deserilization with serde. It is designed to be used with a json parsers like jaq or jq and jaq in eww. 
 
+## Features
+* Workspace id's and names and their windows data
+* active window name and id
+* active workspace
+* All in serialized json
+* Specifcy IPC socket path with --path or -p
+
+![json](images/json.png)
+
+
 
 
 ## Installation
@@ -85,7 +95,13 @@ environment.systemPackages = [rust-hyprland-json];
 
 
 ## Usage
-Currnetly NO command line arguments. run rust-hyprland-json and pass it to a json parser
+~~Currnetly NO command line arguments.~~Now with command line arguments.
+-p,--path for custom IPC path
+-h, --help for help
+-v, --version for version
+
+
+ run rust-hyprland-json and pass it to a json parser
 
 ### Eww
 My personal eww config uses it for the status bar
