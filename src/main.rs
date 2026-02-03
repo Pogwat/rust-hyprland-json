@@ -227,7 +227,6 @@ fn readsock(args:AppArgs) -> Result<(),std::io::Error> {
                         entry.windows_map.get_or_insert_with(HashMap::new)
                         .insert(shared_id,(initialtitle,initialclass));
                     }
-
                     data.format();
                 }
 
@@ -238,8 +237,7 @@ fn readsock(args:AppArgs) -> Result<(),std::io::Error> {
                     if let Some(entry) = data.workspaces.get_mut(work) 
                         && let Some(map) = entry.windows_map.as_mut() {
                                 map.remove(id).expect("this map doesn't have this id");
-                        }
-                    ;
+                        };
                     data.format();    
                     }
                     
@@ -258,8 +256,7 @@ fn readsock(args:AppArgs) -> Result<(),std::io::Error> {
                             && let Some(map) = entry.windows_map.as_mut() 
                                 && let Some((initialtitle,initialclass)) = map.get_mut(id) {
                                 *initialtitle = title.to_string()
-                                }
-                                                                                                      
+                                }                                                                                                      
                     data.format();
                 }
                 
@@ -277,19 +274,15 @@ fn readsock(args:AppArgs) -> Result<(),std::io::Error> {
                                     .get_or_insert_with(HashMap::new) //create hashmap if not in this workspace
                                     .insert(Rc::clone(&shared_id),(initialtitle,initialclass)); //move og values into hashmap
                                 }
-                            }
-                        
-                    
+                            }                                            
                     data.format();
                 }
-
-                
+              
                 _ => {}
 
-
             }
-                }
-                    }
+        }
+    }
     Ok(())
 }
 
@@ -319,7 +312,7 @@ fn format (&self) {
     }) )
         .collect::<Vec<_>>();
     
-    println!("\"workspaces\":{},\"active_window\":\"{}\",\"active_window_id\":\"{}\",\"active_workspace\":\"{}\"", 
+    println!("{{\"workspaces\":{},\"active_window\":\"{}\",\"active_window_id\":\"{}\",\"active_workspace\":\"{}\"}}", 
         serde_json::to_string(&workspaces).unwrap(),
         self.active_win,
         self.active_win_id,
